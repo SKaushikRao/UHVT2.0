@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HeatWatch</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background-color: #ff5722;
+            color: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        header p {
+            margin: 5px 0 0;
+            font-size: 14px;
+        }
+        
+        .header-content {
+            max-width: 70%;
+        }
+        
+        .header-stats {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            background-color: rgba(255,255,255,0.2);
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+        
+        .stat-value {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+        }
+        
+        #map-container {
+            position: relative;
+            margin: 20px 0;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        #map { 
+            height: 600px; 
+            width: 100%;
+        }
+        
+        /* Map Legend */
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 5px;
+            z-index: 1000;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+            max-width: 250px;
+        }
+        
+        .legend h4 { 
+            margin: 0 0 10px; 
+            font-size: 16px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        
+        .legend div { 
+            display: flex; 
+            align-items: center; 
+            margin-bottom: 8px; 
+            font-size: 13px;
+        }
+        
+        .legend span { 
+            display: inline-block; 
+            width: 20px; 
+            height: 20px; 
+            margin-right: 10px; 
+            border-radius: 3px;
+        }
+
+        /* Layer Control */
+        #layer-control {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 5px;
+            z-index: 1000;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+        }
+        
+        .layer-toggle {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .layer-toggle input {
+            margin-right: 8px;
+        }
+        
+        .layer-toggle label {
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* Zoom Data Sidebar */
+        #zoom-data {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 5px;
+            z-index: 1000;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.2);
+            min-width: 250px;
+        }
+        
+        #zoom-data h4 { 
+            margin: 0 0 10px; 
+            font-size: 16px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        
+        #zoom-data p { 
+            margin: 8px 0; 
+            font-size: 14px;
+        }
+        
+        .charts-row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .chart-container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+            margin: 20px 0;
+            flex: 1 1 45%;
+            min-width: 300px;
+        }
+        
+        .heatwave-warning {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+            margin: 20px 0;
+        }
+        
+        .severe-warning {
+            color: #d32f2f;
+            font-weight: bold;
+            font-size: 18px;
+            background-color: #ffebee;
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 5px solid #d32f2f;
+        }
+        
+        .high-warning {
+            color: #f57c00;
+            font-weight: bold;
+            font-size: 18px;
+            background-color: #fff3e0;
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 5px solid #f57c00;
+        }
+        
+        .heatwave-warning h2 {
+            color: #d32f2f;
+            margin-top: 0;
+        }
+        
+        .heatwave-warning h3 {
+            margin-top: 20px;
+            margin-bottom: 10px;
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        
+        .heatwave-warning ul {
+            margin-top: 10px;
+        }
+        
+        .heatwave-warning li {
+            margin-bottom: 5px;
+        }
+        
+        .hydration-info {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .safety-tips, .cooling-strategies {
+            padding-left: 20px;
+        }
+        
+        .safety-tips li, .cooling-strategies li {
+            margin-bottom: 8px;
+        }
+        
+        .quick-stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+            flex: 1 1 200px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .stat-card h3 {
+            margin: 0 0 10px;
+            font-size: 16px;
+            color: #666;
+        }
+        
+        .stat-card .value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff5722;
+        }
+        
+        .popup-content {
+            padding: 5px;
+        }
+        
+        .popup-content h3 {
+            margin-top: 0;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+        }
+        
+        .popup-recommendation {
+            font-size: 13px;
+            background-color: #f9f9f9;
+            padding: 5px;
+            border-radius: 3px;
+            margin-top: 10px;
+        }
+        
+        .popup-recommendation h4 {
+            margin: 0 0 5px;
+            font-size: 14px;
+        }
+        
+        .popup-recommendation ul {
+            margin: 5px 0;
+            padding-left: 20px;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 12px;
+            margin-top: 30px;
+            border-top: 1px solid #ddd;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>HeatWatch – Real-Time Urban Heat Tracker</h1>
+            <p>Monitoring heat vulnerability across Jaipur to identify high-risk areas</p>
+        </div>
+        <div class="header-stats">
+            <div class="stat-item">
+                <div class="stat-value" id="current-temp">--°C</div>
+                <div class="stat-label">Current</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-value" id="max-temp">--°C</div>
+                <div class="stat-label">Max</div>
+            </div>
+        </div>
+    </header>
+    
+    <div class="container">
+        <!-- Quick stats section -->
+        <div class="quick-stats">
+            <div class="stat-card">
+                <h3>Average Temperature</h3>
+                <div class="value" id="stat-avg-temp">--°C</div>
+            </div>
+            <div class="stat-card">
+                <h3>Maximum Temperature</h3>
+                <div class="value" id="stat-max-temp">--°C</div>
+            </div>
+            <div class="stat-card">
+                <h3>Average Tree Cover</h3>
+                <div class="value" id="stat-avg-tree">--%</div>
+            </div>
+            <div class="stat-card">
+                <h3>Average Urban Cover</h3>
+                <div class="value" id="stat-avg-urban">--%</div>
+            </div>
+            <div class="stat-card">
+                <h3>Total Population</h3>
+                <div class="value" id="stat-total-pop">--</div>
+            </div>
+            <div class="stat-card">
+                <h3>Urban Heat Island Effect</h3>
+                <div class="value" id="stat-urban-diff">--°C</div>
+                <div style="font-size: 12px; color: #666;">(Urban vs. Rural)</div>
+            </div>
+        </div>
+        
+        <div id="map-container">
+            <div id="map"></div>
+            
+            <!-- Layer Control -->
+            <div id="layer-control">
+                <!-- Will be populated dynamically -->
+            </div>
+            
+            <!-- Map Legend -->
+            <div class="legend">
+                <h4>Temperature Legend</h4>
+                <div>
+                    <span style="background-color: rgba(0, 0, 255, 0.5);"></span> Low Temperature (< 25°C)
+                </div>
+                <div>
+                    <span style="background-color: rgba(255, 165, 0, 0.5);"></span> Medium Temperature (25–35°C)
+                </div>
+                <div>
+                    <span style="background-color: rgba(255, 0, 0, 0.5);"></span> High Temperature (> 35°C)
+                </div>
+            </div>
+
+            <!-- Zoom Data Sidebar -->
+            <div id="zoom-data">
+                <h4>Location Details</h4>
+                <p id="zoom-location">Location: Hover over map</p>
+                <p id="zoom-temperature">Temperature: --</p>
+                <p id="zoom-tree-cover">Tree Cover: --</p>
+                <p id="zoom-urban-cover">Urban Cover: --</p>
+                <p id="zoom-population">Population: --</p>
+                <p id="zoom-heatwave-alert">Heatwave Alert: --</p>
+            </div>
+        </div>
+        
+        <div class="charts-row">
+            <div class="chart-container">
+                <canvas id="temperatureChart" width="400" height="200"></canvas>
+            </div>
+            <div class="chart-container">
+                <canvas id="correlationChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+        
+        <!-- The heatwave warning section will be added dynamically -->
+        <div id="heatwave-warning"></div>
+        
+        <!-- Climate Resilience Strategies -->
+        <div class="heatwave-warning">
+            <h2>Urban Heat Mitigation Strategies</h2>
+            
+            <h3>Why Urban Areas Get Hotter</h3>
+            <p>Urban areas tend to be significantly warmer than surrounding rural areas due to:</p>
+            <ul>
+                <li><strong>Heat-absorbent materials</strong> like asphalt and concrete store solar energy</li>
+                <li><strong>Lack of vegetation</strong> reduces evaporative cooling and shade</li>
+                <li><strong>Building density</strong> traps heat between structures</li>
+                <li><strong>Heat emissions</strong> from vehicles, air conditioning, and industry</li>
+                <li><strong>Reduced airflow</strong> from building configurations</li>
+            </ul>
+            
+            <h3>Long-term Cooling Solutions</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; margin-top: 15px;">
+                <div style="background-color: #e8f5e9; padding: 15px; border-radius: 5px;">
+                    <h4>Urban Greening</h4>
+                    <p>Strategically planting trees and vegetation can reduce temperatures by 2-8°C through shade and evaporative cooling.</p>
+                    <p><strong>Impact:</strong> High | <strong>Cost:</strong> Medium | <strong>Timeframe:</strong> 3-10 years</p>
+                </div>
+                
+                <div style="background-color: #e3f2fd; padding: 15px; border-radius: 5px;">
+                    <h4>Cool Roofs</h4>
+                    <p>Installing reflective rooftop materials can reduce building temperatures by up to 5°C and ambient air by 1-2°C.</p>
+                    <p><strong>Impact:</strong> Medium | <strong>Cost:</strong> Low-Medium | <strong>Timeframe:</strong> 1-2 years</p>
+                </div>
+                
+                <div style="background-color: #fff3e0; padding: 15px; border-radius: 5px;">
+                    <h4>Permeable Surfaces</h4>
+                    <p>Replacing asphalt and concrete with permeable materials allows for moisture retention and cooling.</p>
+                    <p><strong>Impact:</strong> Medium | <strong>Cost:</strong> Medium-High | <strong>Timeframe:</strong> 1-5 years</p>
+                </div>
+                
+                <div style="background-color: #e8eaf6; padding: 15px; border-radius: 5px;">
+                    <h4>Green Infrastructure</h4>
+                    <p>Rain gardens, bioswales, and green roofs reduce heat while improving stormwater management.</p>
+                    <p><strong>Impact:</strong> High | <strong>Cost:</strong> Medium-High | <strong>Timeframe:</strong> 2-5 years</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>HeatWatch - Monitoring urban heat islands and promoting climate resilience. Data updated every 5 minutes.</p>
+        <p>This application uses simulated data based on spatial patterns and urban heat island principles. For emergency responses, refer to official weather services.</p>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
